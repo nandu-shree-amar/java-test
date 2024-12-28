@@ -1,0 +1,43 @@
+CREATE TABLE Employee (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    rating INT,
+    category CHAR(1)
+);
+
+CREATE TABLE Category (
+    category CHAR(1) PRIMARY KEY,
+    standard_percentage FLOAT
+);
+
+Spring Boot Application
+
+BellCurveService
+
+@Service
+public class BellCurveService {
+    @Autowired
+    private EmployeeRepository employeeRepository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    public Map<String, Object> calculateBellCurve() {
+        List<Employee> employees = employeeRepository.findAll();
+        List<Category> categories = categoryRepository.findAll();
+
+        Map<String, Long> actualCounts = employees.stream()
+                .collect(Collectors.groupingBy(Employee::getCategory, Collectors.counting()));
+
+        Map<String, Double> actualPercentages = actualCounts.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, 
+                        entry -> (entry.getValue() * 100.0) / employees.size()));
+
+        Map<String, Double> deviations = new HashMap<>();
+        for (Category category : categories) {
+            double actual = actualPercentages.getOrDefault(category.getCategory(), 0.0);
+            deviations.put(category.getCategory(), actual - category.getStandardPercentage());
+        }
+
+        return Map.of("actualPercentages", actualPercentages, "deviations", deviations);
+    }
+}
